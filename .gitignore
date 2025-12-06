@@ -1,0 +1,8 @@
+# Datasets
+datasets/
+ALexNet/dataset/
+**/dataset/
+**/data/
+
+VGG-11/models/state_dicts/
+ResNet-18/models/state_dicts/
