@@ -59,21 +59,44 @@ class BasicBlock(nn.Module):
         self.downsample = downsample
         self.stride = stride
 
-    def forward(self, x):
+    # def forward(self, x):
+    #     identity = x
+
+    #     out = self.conv1(x)
+    #     out = self.bn1(out)
+    #     out = self.relu(out)
+
+    #     out = self.conv2(out)
+    #     out = self.bn2(out)
+
+    #     if self.downsample is not None:
+    #         identity = self.downsample(x)
+
+    #     out += identity
+    #     out = self.relu(out)
+
+    #     return out
+    def forward(self, x, reqap_fn=None, block_name=""):
         identity = x
 
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
+        if reqap_fn is not None:
+            out = reqap_fn(out, f"{block_name}.conv1")
 
         out = self.conv2(out)
         out = self.bn2(out)
+        if reqap_fn is not None:
+            out = reqap_fn(out, f"{block_name}.conv2")
 
         if self.downsample is not None:
             identity = self.downsample(x)
 
         out += identity
         out = self.relu(out)
+        if reqap_fn is not None :
+            out = reqap_fn(out, f"{block_name}.after_residual")
 
         return out
 
@@ -239,20 +262,41 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    # def forward(self, x):
+    #     x = self.conv1(x)
+    #     x = self.bn1(x)
+    #     x = self.relu(x)
+    #     x = self.maxpool(x)
+
+    #     x = self.layer1(x)
+    #     x = self.layer2(x)
+    #     x = self.layer3(x)
+    #     x = self.layer4(x)
+
+    #     x = self.avgpool(x)
+    #     x = x.reshape(x.size(0), -1)
+    #     x = self.fc(x)
+
+    #     return x
+
+    def forward(self, x, reqap_fn=None):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
+        if reqap_fn is not None:
+            x = reqap_fn(x, "conv1")
         x = self.maxpool(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        # Apply REQAP in each block
+        for layer_idx, layer in enumerate([self.layer1, self.layer2, self.layer3, self.layer4], 1):
+            for block_idx, block in enumerate(layer):
+                x = block(x, reqap_fn=reqap_fn, block_name=f"layer{layer_idx}[{block_idx}]")
 
         x = self.avgpool(x)
         x = x.reshape(x.size(0), -1)
         x = self.fc(x)
+        if reqap_fn is not None:
+            x = reqap_fn(x, "fc")
 
         return x
 

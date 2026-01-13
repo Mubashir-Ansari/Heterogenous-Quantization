@@ -47,11 +47,31 @@ class VGG(nn.Module):
         if init_weights:
             self._initialize_weights()
 
-    def forward(self, x):
-        x = self.features(x)
+    # def forward(self, x):
+    #     x = self.features(x)
+    #     x = self.avgpool(x)
+    #     x = x.view(x.size(0), -1)
+    #     x = self.classifier(x)
+    #     return x
+    def forward(self, x, reqap_fn=None, protected_layers=[]):
+        # Forward through feature layers
+        for idx, layer in enumerate(self.features):
+            x = layer(x)
+            layer_name = f"features[{idx}]"
+            if reqap_fn is not None and layer_name in protected_layers:
+                x = reqap_fn(x, layer_name)
+
+        # Avg pooling
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
-        x = self.classifier(x)
+
+        # Forward through classifier layers
+        for idx, layer in enumerate(self.classifier):
+            x = layer(x)
+            layer_name = f"classifier[{idx}]"
+            if reqap_fn is not None and layer_name in protected_layers:
+                x = reqap_fn(x, layer_name)
+
         return x
 
     def _initialize_weights(self):
